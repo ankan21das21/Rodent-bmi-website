@@ -339,7 +339,8 @@
             
             <div id="image-display">
                 <h4>Visual Condition Assessment</h4>
-                <img id="conditionImage" src="PLACEHOLDER_DEFAULT_IMAGE_URL.png" alt="Rodent Body Condition Diagram" />
+                <img id="conditionImage" src="images/default.png" alt="Rodent Body Condition Diagram" />
+
                 <p id="image-label" style="font-style: italic; margin-top: 5px; font-size: 0.9em;">Awaiting first measurement...</p>
             </div>
             
@@ -353,11 +354,12 @@
 /* ---------------- IMAGE URL CONFIGURATION ---------------- */
 // !!! REMEMBER TO REPLACE THESE PLACEHOLDER URLS WITH YOUR ACTUAL IMAGE LINKS !!!
 const conditionImages = {
-    "Underweight": "YOUR_UNDERWEIGHT_IMAGE_URL.png", 
-    "Normal": "YOUR_NORMAL_IMAGE_URL.png",         
-    "Overweight": "YOUR_OVERWEIGHT_IMAGE_URL.png",   
-    "Obese": "YOUR_OBESE_IMAGE_URL.png",             
-    "Default": "PLACEHOLDER_DEFAULT_IMAGE_URL.png"   
+  const conditionImages = {
+    "Underweight": "images/underweight.png",
+    "Normal": "images/normal.png",
+    "Overweight": "images/overweight.png",
+    "Obese": "images/obese.png",
+    "Default": "images/default.png"
 };
 
 /* ---------------- Firebase Config ---------------- */
@@ -496,4 +498,5 @@ function uploadToFirebase(weight, length, lee, condition) {
 </script>
 
 </body>
+
 </html>
