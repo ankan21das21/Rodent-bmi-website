@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rodent BMI Monitor | Lab Dashboard</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<style>
+
+.navbar {
+  background: linear-gradient(90deg, #263238, #37474f);
+  padding: 14px 20px;
+  display: flex;
+  gap: 18px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.navbar a {
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  font-size: 15px;
+}
+
+.navbar a:hover {
+  background: #ff9800;
+  color: #000;
+  transform: translateY(-2px);
+}
+
+  :root {
+    --bg-color: #0f172a;        /* Deep Slate Blue/Black */
+    --card-bg: #1e293b;         /* Lighter Slate for cards */
+    --text-primary: #e2e8f0;    /* Off-white text */
+    --text-secondary: #94a3b8;  /* Muted blue-grey text */
+    --accent-cyan: #06b6d4;     /* Cyan for headers */
+    --accent-green: #22c55e;    /* Success/Fit */
+    --accent-blue: #3b82f6;     /* Underweight */
+    --accent-orange: #f97316;   /* Overweight */
+    --accent-red: #ef4444;      /* Obese */
+    --border-color: #334155;    /* Subtle borders */
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+  }
+
+  h2 {
+    font-family: 'JetBrains Mono', monospace;
+    text-align: center;
+    color: var(--accent-cyan);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 30px;
+    border-bottom: 2px solid var(--accent-cyan);
+    padding-bottom: 10px;
+    display: inline-block;
+  }
+
+  /* --- Cards --- */
+  .card {
+    background-color: var(--card-bg);
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    margin-bottom: 25px;
+    border: 1px solid var(--border-color);
+    width: 100%;
+    max-width: 1200px;
+  }
+
+  /* --- Select Box --- */
+  .control-panel {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+  
+  label {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    margin-right: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  select {
+    background-color: var(--bg-color);
+    color: var(--accent-cyan);
+    border: 1px solid var(--border-color);
+    padding: 10px 15px;
+    font-size: 1rem;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer;
+    min-width: 250px;
+    transition: border 0.3s ease;
+  }
+  select:focus {
+    outline: none;
+    border-color: var(--accent-cyan);
+  }
+
+  /* --- Table --- */
+  .table-container {
+    overflow-x: auto;
+    max-height: 70vh; /* Scrollable height */
+  }
+
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    min-width: 1000px;
+  }
+
+  th {
+    background-color: var(--bg-color); /* Sticky header bg */
+    color: var(--text-secondary);
+    font-weight: 600;
+    padding: 15px;
+    text-align: left;
+    border-bottom: 2px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+  }
+
+  td {
+    padding: 15px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.9rem;
+    font-family: 'JetBrains Mono', monospace; /* Monospace for numbers */
+  }
+
+  tr:hover td {
+    background-color: rgba(255, 255, 255, 0.03);
+    color: #fff;
+  }
+
+  /* --- Condition Badges --- */
+  .badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-block;
+    min-width: 80px;
+    text-align: center;
+  }
+
+  .UNDERWEIGHT { 
+    color: var(--accent-blue); 
+    background: rgba(59, 130, 246, 0.15); 
+    border: 1px solid rgba(59, 130, 246, 0.3);
+  }
+  .FIT { 
+    color: var(--accent-green); 
+    background: rgba(34, 197, 94, 0.15); 
+    border: 1px solid rgba(34, 197, 94, 0.3);
+  }
+  .OVERWEIGHT { 
+    color: var(--accent-orange); 
+    background: rgba(249, 115, 22, 0.15); 
+    border: 1px solid rgba(249, 115, 22, 0.3);
+  }
+  .OBESE { 
+    color: var(--accent-red); 
+    background: rgba(239, 68, 68, 0.15); 
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  /* --- Loading State --- */
+  #loading {
+    text-align: center;
+    color: var(--text-secondary);
+    padding: 20px;
+    font-style: italic;
+  }
+</style>
+</head>
+
+<body>
+<nav class="navbar">
+  <a href="index.html"   target="_blank">🏠 Dashboard</a>
+  <a href="records.html" target="_blank">📋 Records</a>
+  <a href="trends.html"  target="_blank">📈 Trends</a>
+  <a href="alerts.html"  target="_blank">🚨 Alerts</a>
+  <a href="about.html"   target="_blank">ℹ️ About</a>
+</nav>
+
+
+<h2>🧪 LAB MONITOR: RODENT BMI</h2>
+
+<div class="card control-panel">
+  <div>
+    <label>DATA SOURCE ID:</label>
+    <select id="rodentSelect" onchange="loadRecords()">
+      <option>Loading...</option>
+    </select>
+  </div>
+</div>
+
+<div class="card table-container">
+  <table>
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Gender</th>
+        <th>Age (Wks)</th>
+        <th>Drug</th>
+        <th>Dose (mg/kg)</th>
+        <th>Weight (g)</th>
+        <th>Length (cm)</th>
+        <th>Lee Index</th>
+        <th>Condition</th>
+      </tr>
+    </thead>
+    <tbody id="recordsTable">
+       </tbody>
+  </table>
+  <div id="loading">Select a Rodent ID to view data</div>
+</div>
+
+<script>
+/* -------- Firebase Config -------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyDv704GB8rX4ZX7AZ14Bjc1MCQ2sXYdd7A",
+  authDomain: "rodent-bmi-monitor.firebaseapp.com",
+  databaseURL: "https://rodent-bmi-monitor-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "rodent-bmi-monitor",
+  storageBucket: "rodent-bmi-monitor.firebasestorage.app",
+  messagingSenderId: "729549308040",
+  appId: "1:729549308040:web:4c86948f8e637b17991f3d"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let currentMetadata = {};
+
+/* -------- Load Rodent IDs -------- */
+const select = document.getElementById("rodentSelect");
+
+db.ref("rodent_data").on("value", snap => {
+  select.innerHTML = "";
+  
+  if(!snap.exists()){
+     select.innerHTML = "<option>No Data Found</option>";
+     return;
+  }
+
+  snap.forEach(child => {
+    const opt = document.createElement("option");
+    opt.value = child.key;
+    opt.innerText = child.key;
+    select.appendChild(opt);
+  });
+  
+  // Load the first one automatically
+  loadRecords();
+});
+
+/* -------- Load Records + Metadata -------- */
+function loadRecords() {
+  const rodentId = select.value;
+  const tbody = document.getElementById("recordsTable");
+  const loadingDiv = document.getElementById("loading");
+  
+  if(!rodentId) return;
+
+  tbody.innerHTML = "";
+  loadingDiv.style.display = "block";
+  loadingDiv.innerText = "Fetching biometrics...";
+
+  // Load metadata once
+  db.ref("rodent_data/" + rodentId + "/metadata").once("value", metaSnap => {
+    currentMetadata = metaSnap.val() || {};
+
+    // Load measurement records
+    db.ref("rodent_data/" + rodentId + "/records").once("value", snap => {
+      loadingDiv.style.display = "none";
+      
+      if(!snap.exists()){
+         tbody.innerHTML = "<tr><td colspan='9' style='text-align:center'>No records found.</td></tr>";
+         return;
+      }
+
+      snap.forEach(rec => {
+        const d = rec.val();
+        const tr = document.createElement("tr");
+
+        // Format Date
+        const dateObj = new Date(d.timestamp);
+        const dateStr = dateObj.toLocaleDateString() + " " + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        
+        // Condition Class extraction
+        const conditionClass = d.condition ? d.condition.split(" ")[0] : "";
+
+        tr.innerHTML = `
+          <td>${dateStr}</td>
+          <td>${currentMetadata.gender || "-"}</td>
+          <td>${currentMetadata.age_weeks || "-"}</td>
+          <td style="color:var(--accent-cyan)">${currentMetadata.drug || "-"}</td>
+          <td>${currentMetadata.dose_mg_per_kg || "-"}</td>
+          <td><b>${d.weight_g}</b></td>
+          <td>${d.length_cm}</td>
+          <td>${d.lee_index}</td>
+          <td><span class="badge ${conditionClass}">${d.condition}</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    });
+  });
+}
+</script>
+
+</body>
+</html>

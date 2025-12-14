@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Rodent BMI Trends</title>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+.navbar {
+  background: linear-gradient(90deg, #263238, #37474f);
+  padding: 14px 20px;
+  display: flex;
+  gap: 18px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.navbar a {
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  font-size: 15px;
+}
+
+.navbar a:hover {
+  background: #ff9800;
+  color: #000;
+  transform: translateY(-2px);
+}
+
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #eef3fb;
+    padding: 20px;
+  }
+  h2 {
+    text-align: center;
+    color: #0d47a1;
+  }
+  .card {
+    background: #ffffff;
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    margin-bottom: 20px;
+  }
+  select {
+    padding: 8px;
+    width: 100%;
+    font-size: 16px;
+    margin-top: 5px;
+  }
+  canvas {
+    max-height: 360px;
+  }
+</style>
+</head>
+
+<body>
+<nav class="navbar">
+  <a href="index.html"   target="_blank">🏠 Dashboard</a>
+  <a href="records.html" target="_blank">📋 Records</a>
+  <a href="trends.html"  target="_blank">📈 Trends</a>
+  <a href="alerts.html"  target="_blank">🚨 Alerts</a>
+  <a href="about.html"   target="_blank">ℹ️ About</a>
+</nav>
+
+
+<h2>📈 Rodent Health Trend Analysis</h2>
+
+<div class="card">
+  <label><b>Select Rodent ID</b></label>
+  <select id="rodentSelect" onchange="loadTrends()"></select>
+</div>
+
+<div class="card"><canvas id="leeChart"></canvas></div>
+<div class="card"><canvas id="weightChart"></canvas></div>
+<div class="card"><canvas id="lengthChart"></canvas></div>
+
+<div class="card">
+  <canvas id="combinedChart"></canvas>
+</div>
+
+<script>
+/* ---------- Firebase ---------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyDv704GB8rX4ZX7AZ14Bjc1MCQ2sXYdd7A",
+  authDomain: "rodent-bmi-monitor.firebaseapp.com",
+  databaseURL: "https://rodent-bmi-monitor-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "rodent-bmi-monitor",
+  storageBucket: "rodent-bmi-monitor.firebasestorage.app",
+  messagingSenderId: "729549308040",
+  appId: "1:729549308040:web:4c86948f8e637b17991f3d"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+/* ---------- Charts ---------- */
+let leeChart, weightChart, lengthChart, combinedChart;
+
+/* ---------- Load Rodent IDs ---------- */
+db.ref("rodent_data").on("value", snap => {
+  const select = document.getElementById("rodentSelect");
+  select.innerHTML = "";
+  snap.forEach(child => {
+    const opt = document.createElement("option");
+    opt.value = child.key;
+    opt.innerText = child.key;
+    select.appendChild(opt);
+  });
+  loadTrends();
+});
+
+/* ---------- Load Trend Data ---------- */
+function loadTrends() {
+  const rodentId = document.getElementById("rodentSelect").value;
+  if (!rodentId) return;
+
+  db.ref("rodent_data/" + rodentId).once("value", snap => {
+
+    const meta = snap.child("metadata").val() || {};
+    const dose = meta.dose_mg_per_kg || 0;
+
+    let labels = [];
+    let lee = [];
+    let weight = [];
+    let length = [];
+    let doseArr = [];
+
+    snap.child("records").forEach(rec => {
+      const d = rec.val();
+      labels.push(new Date(d.timestamp).toLocaleString());
+      lee.push(d.lee_index);
+      weight.push(d.weight_g);
+      length.push(d.length_cm);
+      doseArr.push(dose);
+    });
+
+    drawSingleCharts(labels, lee, weight, length);
+    drawCombinedChart(labels, lee, weight, length, doseArr);
+  });
+}
+
+/* ---------- Individual Charts ---------- */
+function drawSingleCharts(labels, lee, weight, length) {
+
+  if (leeChart) leeChart.destroy();
+  if (weightChart) weightChart.destroy();
+  if (lengthChart) lengthChart.destroy();
+
+  leeChart = new Chart(document.getElementById("leeChart"), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Lee Index',
+        data: lee,
+        borderColor: '#1e88e5',
+        tension: 0.3
+      }]
+    }
+  });
+
+  weightChart = new Chart(document.getElementById("weightChart"), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Weight (g)',
+        data: weight,
+        borderColor: '#43a047',
+        tension: 0.3
+      }]
+    }
+  });
+
+  lengthChart = new Chart(document.getElementById("lengthChart"), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Length (cm)',
+        data: length,
+        borderColor: '#fb8c00',
+        tension: 0.3
+      }]
+    }
+  });
+}
+
+/* ---------- Combined Graph ---------- */
+function drawCombinedChart(labels, lee, weight, length, dose) {
+
+  if (combinedChart) combinedChart.destroy();
+
+  combinedChart = new Chart(document.getElementById("combinedChart"), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Lee Index',
+          data: lee,
+          borderColor: '#1e88e5',
+          yAxisID: 'y1',
+          tension: 0.3
+        },
+        {
+          label: 'Weight (g)',
+          data: weight,
+          borderColor: '#43a047',
+          yAxisID: 'y2',
+          tension: 0.3
+        },
+        {
+          label: 'Length (cm)',
+          data: length,
+          borderColor: '#fb8c00',
+          yAxisID: 'y3',
+          tension: 0.3
+        },
+        {
+          label: 'Dose (mg/kg)',
+          data: dose,
+          borderColor: '#8e24aa',
+          borderDash: [6,6],
+          yAxisID: 'y4'
+        }
+      ]
+    },
+    options: {
+      plugins: {
+        title: {
+          display: true,
+          text: 'Combined Drug–Physiology Trend Analysis'
+        }
+      },
+      scales: {
+        y1: {
+          position: 'left',
+          title: { display: true, text: 'Lee Index' }
+        },
+        y2: {
+          position: 'right',
+          grid: { drawOnChartArea: false },
+          title: { display: true, text: 'Weight (g)' }
+        },
+        y3: {
+          display: false
+        },
+        y4: {
+          position: 'right',
+          grid: { drawOnChartArea: false },
+          title: { display: true, text: 'Dose (mg/kg)' }
+        }
+      }
+    }
+  });
+}
+</script>
+
+</body>
+</html>

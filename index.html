@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Rodent BMI Live Dashboard</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <style>
+
+.navbar {
+  background: linear-gradient(90deg, #263238, #37474f);
+  padding: 14px 20px;
+  display: flex;
+  gap: 18px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.navbar a {
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  font-size: 15px;
+}
+
+.navbar a:hover {
+  background: #ff9800;
+  color: #000;
+  transform: translateY(-2px);
+}
+
+    /* ------------------- COLOR PALETTE ------------------- */
+    :root {
+      --bg-dark: #12121e;       /* Deeper main background */
+      --card-bg: #1e1e2f;       /* Card background */
+      --text-light: #e0e0e0;    /* Primary text color */
+      --primary-accent: #00bcd4; /* Teal/Cyan for accents */
+      --input-border: #4a4d65;   /* Input and separator lines */
+      --success: #4caf50;       /* Green for positive status */
+      --warning: #ffc107;       /* Yellow/Orange for warnings */
+      --danger: #e91e63;        /* Pink for critical status */
+    }
+
+    /* ------------------- BASE STYLES & SCROLLABILITY ------------------- */
+    html, body {
+        /* Removed height: 100% to restore scrollability */
+        margin: 0;
+        padding: 0;
+    }
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-light);
+      padding: 0 30px 30px 30px; 
+    }
+
+    /* ------------------- NAVIGATION BAR ------------------- */
+    .navbar {
+        background: var(--card-bg);
+        padding: 10px 0;
+        margin-bottom: 20px;
+        border-bottom: 2px solid var(--primary-accent);
+        display: flex;
+        justify-content: flex-start;
+        border-radius: 0 0 8px 8px; 
+    }
+    .nav-link {
+        color: var(--text-light);
+        text-decoration: none;
+        padding: 8px 20px;
+        margin: 0 5px;
+        border-radius: 4px;
+        transition: background-color 0.2s, color 0.2s;
+        font-weight: 500;
+    }
+    .nav-link:hover {
+        background-color: var(--primary-accent);
+        color: var(--bg-dark);
+    }
+    
+    /* ------------------- HEADER & COMPACT BUTTON ------------------- */
+    .header-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 15px;
+    }
+    .main-heading {
+        color: var(--text-light);
+        border-bottom: 2px solid var(--primary-accent);
+        padding-bottom: 8px;
+        margin: 0;
+        font-weight: 700;
+        font-size: 1.8em;
+    }
+    .connect-btn {
+        padding: 8px 15px !important;
+        width: auto !important; 
+        margin-top: 0 !important;
+        font-size: 0.9em;
+        background: var(--primary-accent);
+        color: var(--bg-dark);
+        border-radius: 6px;
+    }
+    .connect-btn:hover {
+        background: #00a4b8;
+        transform: translateY(-1px);
+    }
+    .connect-btn i {
+        margin-right: 5px;
+    }
+
+
+    /* ------------------- CARD STYLES ------------------- */
+    .card {
+      background: var(--card-bg);
+      padding: 20px;
+      margin-bottom: 20px; /* Restored margin for separation and scrollability */
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--input-border);
+    }
+
+    .card h3 {
+      color: var(--primary-accent);
+      margin-top: 0;
+      margin-bottom: 15px;
+      border-bottom: 1px dashed var(--input-border);
+      padding-bottom: 8px;
+    }
+
+    /* ------------------- FORM ELEMENTS - SPACED VERSION ------------------- */
+    label {
+        display: block;
+        margin-top: 15px; /* Restored comfortable vertical spacing */
+        margin-bottom: 4px;
+        font-size: 0.9em;
+        font-weight: 300;
+        color: var(--text-light);
+    }
+    label:first-of-type {
+        margin-top: 0; 
+    }
+
+    input, select {
+      padding: 10px;
+      width: calc(100% - 20px);
+      margin-top: 4px;
+      border: 1px solid var(--input-border);
+      background: var(--bg-dark);
+      color: var(--text-light);
+      border-radius: 6px;
+      box-sizing: border-box;
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus {
+      border-color: var(--primary-accent);
+      outline: none;
+    }
+
+    /* ------------------- BUTTON STYLES ------------------- */
+    button {
+        padding: 10px 15px;
+        width: 100%;
+        margin-top: 15px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 700;
+        transition: background-color 0.2s, transform 0.1s;
+    }
+    .action-btn {
+      background: #4a4d65; 
+      color: var(--text-light);
+    }
+    .action-btn:hover {
+      background: #5c607a;
+    }
+
+
+    /* ------------------- MAIN LAYOUT (GRID) ------------------- */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr 2fr; /* Left (Controls) | Right (Data & Image) */
+      gap: 20px; 
+    }
+    .controls-column {
+        /* No flex-grow, allows content to push layout */
+        display: flex;
+        flex-direction: column;
+    }
+    .data-column {
+        display: flex;
+        flex-direction: column;
+    }
+    .data-column .card {
+        /* The live data card will now contain the data and the image */
+        margin-bottom: 0; 
+    }
+
+    /* ------------------- LIVE DATA CARDS (Top Right) ------------------- */
+    .data-container {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr); 
+      gap: 15px; 
+      margin-bottom: 20px; /* Space before the image box */
+    }
+    .data-card {
+      background: var(--bg-dark);
+      border-left: 4px solid var(--primary-accent);
+      padding: 10px; 
+      border-radius: 8px;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+    }
+    .data-card .value {
+      font-size: 2.2em; 
+      font-weight: 700;
+      color: var(--success);
+      line-height: 1.2;
+      margin: 5px 0 5px 0;
+    }
+    /* Dynamic color for Condition status */
+    .condition-normal { color: var(--success); }
+    .condition-underweight { color: var(--warning); }
+    .condition-overweight { color: var(--warning); }
+    .condition-obese { color: var(--danger); }
+
+    /* ------------------- IMAGE DISPLAY SECTION (Adjusted) ------------------- */
+    #image-display {
+        text-align: center;
+        padding: 15px;
+        background: var(--bg-dark); 
+        border-radius: 8px;
+        margin-top: 15px; /* Separates it from the data cards */
+        border: 1px solid var(--input-border);
+    }
+
+    #conditionImage {
+        max-width: 90%;
+        height: auto;
+        max-height: 200px; /* Slightly more relaxed max height */
+        margin-top: 5px;
+        border: 2px solid var(--primary-accent);
+        border-radius: 8px;
+        object-fit: contain; 
+    }
+    #image-display h4 {
+        margin: 0 0 10px 0;
+        color: var(--primary-accent);
+        font-weight: 500;
+        font-size: 1.1em;
+    }
+  </style>
+</head>
+
+<body>
+
+<nav class="navbar">
+  <a href="index.html"   target="_blank">🏠 Dashboard</a>
+  <a href="records.html" target="_blank">📋 Records</a>
+  <a href="trends.html"  target="_blank">📈 Trends</a>
+  <a href="alerts.html"  target="_blank">🚨 Alerts</a>
+  <a href="about.html"   target="_blank">ℹ️ About</a>
+</nav>
+
+
+<div class="header-container">
+    <h2 class="main-heading"><i class="fas fa-mouse-pointer"></i> Rodent BMI – Live Measurement Dashboard</h2>
+    <button class="connect-btn" onclick="connectArduino()"><i class="fas fa-plug"></i> Connect Arduino</button>
+</div>
+
+<div class="dashboard-grid">
+    <div class="controls-column">
+        
+        <div class="card">
+            <h3><i class="fas fa-dna"></i> Rodent Details</h3>
+            <label for="rodentId">Rodent ID</label>
+            <input id="rodentId" value="R001">
+
+            <label for="gender">Gender</label>
+            <select id="gender">
+                <option>Male</option>
+                <option>Female</option>
+            </select>
+
+            <label for="age">Age (weeks)</label>
+            <input type="number" id="age" value="8" min="0">
+
+            <label for="drug">Drug Administered</label>
+            <input id="drug" placeholder="Eg: Metformin">
+
+            <label for="dose">Dose (mg/kg)</label>
+            <input type="number" id="dose" placeholder="Eg: 10" min="0" step="0.1">
+        </div>
+
+        <div class="card">
+            <h3><i class="fas fa-ruler-horizontal"></i> Manual Length Input</h3>
+            <label for="length">Length (cm)</label>
+            <input type="number" id="length" step="0.1" placeholder="Enter length manually">
+            <button class="action-btn" onclick="sendLength()"><i class="fas fa-paper-plane"></i> Send Length to Arduino</button>
+        </div>
+    </div>
+    
+    <div class="data-column">
+        
+        <div class="card">
+            <h3><i class="fas fa-chart-line"></i> Live Data Feed</h3>
+
+            <div class="data-container">
+                <div class="data-card">
+                    <div class="unit">Weight</div>
+                    <div class="value"><span id="w">--</span></div>
+                    <div class="unit"><i class="fas fa-weight-hanging"></i> g</div>
+                </div>
+                <div class="data-card">
+                    <div class="unit">Length</div>
+                    <div class="value"><span id="l">--</span></div>
+                    <div class="unit"><i class="fas fa-tape"></i> cm</div>
+                </div>
+                <div class="data-card">
+                    <div class="unit">Lee Index</div>
+                    <div class="value"><span id="lee">--</span></div>
+                    <div class="unit"><i class="fas fa-calculator"></i> Index</div>
+                </div>
+                <div class="data-card">
+                    <div class="unit">Condition</div>
+                    <div class="value"><span id="cond">--</span></div>
+                    <div class="unit"><i class="fas fa-heartbeat"></i> Status</div>
+                </div>
+            </div>
+            
+            <div id="image-display">
+                <h4>Visual Condition Assessment</h4>
+                <img id="conditionImage" src="PLACEHOLDER_DEFAULT_IMAGE_URL.png" alt="Rodent Body Condition Diagram" />
+                <p id="image-label" style="font-style: italic; margin-top: 5px; font-size: 0.9em;">Awaiting first measurement...</p>
+            </div>
+            
+            <p style="margin-top: 20px; font-size: 0.7em; opacity: 0.6; text-align: center;">Data is automatically uploaded to Firebase as it is received from the Arduino.</p>
+        </div>
+    </div>
+</div>
+
+
+<script>
+/* ---------------- IMAGE URL CONFIGURATION ---------------- */
+// !!! REMEMBER TO REPLACE THESE PLACEHOLDER URLS WITH YOUR ACTUAL IMAGE LINKS !!!
+const conditionImages = {
+    "Underweight": "YOUR_UNDERWEIGHT_IMAGE_URL.png", 
+    "Normal": "YOUR_NORMAL_IMAGE_URL.png",         
+    "Overweight": "YOUR_OVERWEIGHT_IMAGE_URL.png",   
+    "Obese": "YOUR_OBESE_IMAGE_URL.png",             
+    "Default": "PLACEHOLDER_DEFAULT_IMAGE_URL.png"   
+};
+
+/* ---------------- Firebase Config ---------------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyDv704GB8rX4ZX7AZ14Bjc1MCQ2sXYdd7A",
+  authDomain: "rodent-bmi-monitor.firebaseapp.com",
+  databaseURL: "https://rodent-bmi-monitor-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "rodent-bmi-monitor",
+  storageBucket: "rodent-bmi-monitor.firebasestorage.app",
+  messagingSenderId: "729549308040",
+  appId: "1:729549308040:web:4c86948f8e637b17991f3d",
+  measurementId: "G-9NHJ2ZZZ59"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+/* ---------------- Web Serial ---------------- */
+let port, reader, writer;
+
+async function connectArduino() {
+  try {
+    port = await navigator.serial.requestPort();
+    await port.open({ baudRate: 9600 });
+
+    writer = port.writable.getWriter();
+    reader = port.readable.getReader();
+
+    const connectBtn = document.querySelector('.connect-btn');
+    connectBtn.innerHTML = '<i class="fas fa-check-circle"></i> Connected!';
+    connectBtn.style.backgroundColor = 'var(--success)';
+    connectBtn.disabled = true;
+
+    console.log("Arduino connected ✅");
+    readSerial();
+  } catch (err) {
+    console.error("Connection error:", err);
+    alert("Failed to connect Arduino. Make sure Serial Monitor is closed.");
+  }
+}
+
+async function readSerial() {
+  let buffer = "";
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += new TextDecoder().decode(value);
+    let lines = buffer.split("\n");
+    buffer = lines.pop();
+    lines.forEach(processLine);
+  }
+}
+
+function processLine(line) {
+  line = line.trim();
+  if (!line.startsWith("DATA")) return;
+
+  // DATA,weight,length,lee,condition
+  let p = line.split(",");
+  let weight = parseFloat(p[1]);
+  let length = parseFloat(p[2]);
+  let lee = parseFloat(p[3]);
+  let condition = p[4] ? p[4].trim() : "Unknown"; 
+
+  // 1. Update Live Data Cards
+  const conditionElement = document.getElementById("cond");
+  document.getElementById("w").innerText = weight.toFixed(2);
+  document.getElementById("l").innerText = length.toFixed(2);
+  document.getElementById("lee").innerText = lee.toFixed(3);
+  conditionElement.innerText = condition;
+
+  // Clear previous condition classes and apply new one for dynamic color
+  conditionElement.className = ''; 
+  conditionElement.classList.add(`condition-${condition.toLowerCase()}`); 
+
+  // 2. Update Rodent Condition Image
+  const imageElement = document.getElementById("conditionImage");
+  const labelElement = document.getElementById("image-label");
+  
+  if (conditionImages[condition]) {
+    imageElement.src = conditionImages[condition];
+    imageElement.alt = `Rodent Condition: ${condition}`;
+    labelElement.innerText = `Current Condition: ${condition}`;
+  } else {
+    // Fallback if the condition doesn't match a defined image key
+    imageElement.src = conditionImages.Default;
+    imageElement.alt = "Unknown Rodent Condition";
+    labelElement.innerText = `Current Condition: ${condition} (Image Not Available)`;
+  }
+  
+  // 3. Upload to Firebase
+  uploadToFirebase(weight, length, lee, condition);
+}
+
+async function sendLength() {
+  let len = document.getElementById("length").value;
+  if (!len) return;
+  
+  if (!writer) {
+      alert("Please connect the Arduino first!");
+      return;
+  }
+  
+  await writer.write(new TextEncoder().encode("L:" + len + "\n"));
+  
+  const sendBtn = document.querySelector('.action-btn');
+  const originalText = sendBtn.innerHTML;
+  sendBtn.innerHTML = '<i class="fas fa-check"></i> Length Sent!';
+  setTimeout(() => {
+      sendBtn.innerHTML = originalText;
+  }, 1500);
+}
+
+/* ---------------- Firebase Upload ---------------- */
+function uploadToFirebase(weight, length, lee, condition) {
+  const rodentId = document.getElementById("rodentId").value;
+
+  const meta = {
+    gender: document.getElementById("gender").value,
+    age_weeks: Number(document.getElementById("age").value),
+    drug: document.getElementById("drug").value,
+    dose_mg_per_kg: Number(document.getElementById("dose").value)
+  };
+
+  // Store metadata once
+  db.ref("rodent_data/" + rodentId + "/metadata").set(meta);
+
+  // Store measurement record
+  db.ref("rodent_data/" + rodentId + "/records").push({
+    weight_g: weight,
+    length_cm: length,
+    lee_index: lee,
+    condition: condition,
+    timestamp: new Date().toISOString()
+  });
+}
+</script>
+
+</body>
+</html>
